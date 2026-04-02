@@ -1,7 +1,9 @@
 package com.hotel.reservationservice.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,8 @@ import com.hotel.reservationservice.dto.ReservationRequest;
 import com.hotel.reservationservice.dto.ReservationResponse;
 import com.hotel.reservationservice.dto.RoomDto;
 import com.hotel.reservationservice.entity.Reservation;
+import com.hotel.reservationservice.event.ReservationCreatedEvent;
+import com.hotel.reservationservice.event.ReservationEventProducer;
 import com.hotel.reservationservice.repository.ReservationRepository;
 
 import feign.FeignException;
@@ -24,11 +28,13 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final RoomClient roomClient;
     private final CustomerClient customerClient;
+    private final ReservationEventProducer eventProducer;
 
-    public ReservationService(ReservationRepository reservationRepository, RoomClient roomClient, CustomerClient customerClient) {
+    public ReservationService(ReservationRepository reservationRepository, RoomClient roomClient, CustomerClient customerClient, ReservationEventProducer eventProducer) {
         this.reservationRepository = reservationRepository;
         this.roomClient = roomClient;
         this.customerClient = customerClient;
+        this.eventProducer = eventProducer;
     }
 
     public ReservationResponse createReservation(ReservationRequest request)
@@ -63,6 +69,14 @@ public class ReservationService {
         reservation.setStatus(Reservation.ReservationStatus.PENDING);
         Reservation saved = reservationRepository.save(reservation);
 
+        ReservationCreatedEvent event= new ReservationCreatedEvent(
+            UUID.randomUUID().toString(),
+            "RESERVATION_CREATED",
+            LocalDateTime.now(),
+            new ReservationCreatedEvent.Payload(saved.getId(), saved.getCustomerId(), saved.getRoomId())
+
+        );
+        eventProducer.publishReservationCreatedEvent(event);
         return toResponse(saved);
     }
  public ReservationResponse getReservationById(Long id) {
