@@ -1,7 +1,9 @@
 package com.hotel.notificationservice.service;
 
+import com.hotel.notificationservice.dto.EmailDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -9,12 +11,15 @@ public class EmailTemplateService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailTemplateService.class);
 
-    public String reservationConfirmed(Long reservationId, Long roomId) {
-        String template = """
-                ==========================================
-                To: Customer
-                Subject: Reservation Confirmed – Booking #%d
-                
+    @Value("${spring.mail.from}")
+    private String from;
+
+    private static final String CUSTOMER_EMAIL = "notificationtester612@gmail.com";
+    private static final String ADMIN_EMAIL = "notificationtester612@gmail.com";
+
+    public EmailDto reservationConfirmed(Long reservationId, Long roomId) {
+        String subject = "Reservation Confirmed – Booking #" + reservationId;
+        String body = """
                 Hi Customer,
                 Your reservation has been successfully confirmed.
                 
@@ -23,20 +28,16 @@ public class EmailTemplateService {
                 Room ID        : %d
                 Status         : CONFIRMED
                 
-                Thank you for choosing our service.
+                Thank you for choosing our service. We look forward to hosting you.
                 — Hotel Reservation System
-                ==========================================
-                """.formatted(reservationId, reservationId, roomId);
+                """.formatted(reservationId, roomId);
         log.info("Generated reservation confirmation email for reservationId: {}", reservationId);
-        return template;
+        return new EmailDto(CUSTOMER_EMAIL, subject, body);
     }
 
-    public String paymentSuccess(Long reservationId) {
-        String template = """
-                ==========================================
-                To: Customer
-                Subject: Payment Successful – Reservation #%d
-                
+    public EmailDto paymentSuccess(Long reservationId) {
+        String subject = "Payment Successful – Reservation #" + reservationId;
+        String body = """
                 Hi Customer,
                 Your payment has been successfully processed.
                 
@@ -44,18 +45,14 @@ public class EmailTemplateService {
                 Payment Status : SUCCESS
                 Your booking is now confirmed.
                 — Hotel Reservation System
-                ==========================================
-                """.formatted(reservationId, reservationId);
+                """.formatted(reservationId);
         log.info("Generated payment success email for reservationId: {}", reservationId);
-        return template;
+        return new EmailDto(CUSTOMER_EMAIL, subject, body);
     }
 
-    public String paymentFailed(Long reservationId) {
-        String template = """
-                ==========================================
-                To: Customer
-                Subject: Payment Failed – Reservation #%d
-                
+    public EmailDto paymentFailed(Long reservationId) {
+        String subject = "Payment Failed – Reservation #" + reservationId;
+        String body = """
                 Hi Customer,
                 We were unable to process your payment for the reservation.
                 
@@ -63,18 +60,14 @@ public class EmailTemplateService {
                 Payment Status : FAILED
                 Please try again to complete your booking.
                 — Hotel Reservation System
-                ==========================================
-                """.formatted(reservationId, reservationId);
+                """.formatted(reservationId);
         log.info("Generated payment failed email for reservationId: {}", reservationId);
-        return template;
+        return new EmailDto(CUSTOMER_EMAIL, subject, body);
     }
 
-    public String reservationCancelled(Long reservationId) {
-        String template = """
-                ==========================================
-                To: Customer
-                Subject: Reservation Cancelled – Booking #%d
-                
+    public EmailDto reservationCancelled(Long reservationId) {
+        String subject = "Reservation Cancelled – Booking #" + reservationId;
+        String body = """
                 Hi Customer,
                 Your reservation has been successfully cancelled.
                 
@@ -82,18 +75,14 @@ public class EmailTemplateService {
                 Status         : CANCELLED
                 If this was not intended, please create a new reservation.
                 — Hotel Reservation System
-                ==========================================
-                """.formatted(reservationId, reservationId);
+                """.formatted(reservationId);
         log.info("Generated reservation cancelled email for reservationId: {}", reservationId);
-        return template;
+        return new EmailDto(CUSTOMER_EMAIL, subject, body);
     }
 
-    public String notificationRetryFailed(Long notificationId, int retryCount) {
-        String template = """
-                ==========================================
-                To: Admin
-                Subject: Notification Delivery Failed – Notification #%d
-                
+    public EmailDto notificationRetryFailed(Long notificationId, int retryCount) {
+        String subject = "Notification Delivery Failed – Notification #" + notificationId;
+        String body = """
                 Hi Admin,
                 A notification has failed to be delivered even after multiple retry attempts.
                 
@@ -102,27 +91,22 @@ public class EmailTemplateService {
                 Retry Count     : %d
                 Manual intervention may be required.
                 — Hotel Reservation System
-                ==========================================
-                """.formatted(notificationId, notificationId, retryCount);
+                """.formatted(notificationId, retryCount);
         log.warn("Generated retry failure email for notificationId: {}", notificationId);
-        return template;
+        return new EmailDto(ADMIN_EMAIL, subject, body);
     }
 
-    public String notificationRetrySuccess(Long notificationId) {
-        String template = """
-                ==========================================
-                To: Admin
-                Subject: Notification Successfully Delivered After Retry
-                
+    public EmailDto notificationRetrySuccess(Long notificationId) {
+        String subject = "Notification Successfully Delivered After Retry";
+        String body = """
                 Hi Admin,
                 A previously failed notification has been successfully delivered after retry.
                 
                 Notification ID : %d
                 Final Status    : SENT
                 — Hotel Reservation System
-                ==========================================
                 """.formatted(notificationId);
         log.info("Generated retry success email for notificationId: {}", notificationId);
-        return template;
+        return new EmailDto(ADMIN_EMAIL, subject, body);
     }
 }

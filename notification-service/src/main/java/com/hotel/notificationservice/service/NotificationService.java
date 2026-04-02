@@ -1,5 +1,6 @@
 package com.hotel.notificationservice.service;
 
+import com.hotel.notificationservice.dto.EmailDto;
 import com.hotel.notificationservice.entity.Notification;
 import com.hotel.notificationservice.repository.NotificationRepository;
 import org.slf4j.Logger;
@@ -17,14 +18,17 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final EmailTemplateService emailTemplateService;
+    private final EmailSenderService emailSenderService;
 
     @Value("${notification.retry.max-attempts}")
     private int maxRetryAttempts;
 
     public NotificationService(NotificationRepository notificationRepository,
-                                EmailTemplateService emailTemplateService) {
+                                EmailTemplateService emailTemplateService,
+                                EmailSenderService emailSenderService) {
         this.notificationRepository = notificationRepository;
         this.emailTemplateService = emailTemplateService;
+        this.emailSenderService = emailSenderService;
     }
 
     public Notification createNotification(String message,
@@ -38,11 +42,11 @@ public class NotificationService {
         return saved;
     }
 
-    public void sendNotification(Notification notification) {
+    public void sendNotification(Notification notification, EmailDto emailDto) {
         try {
             log.info("Sending {} notification id: {}",
                 notification.getType(), notification.getId());
-            log.info("\n{}", notification.getMessage());
+            emailSenderService.sendEmail(emailDto);
             notification.setStatus(Notification.NotificationStatus.SENT);
             log.info("Notification {} sent successfully", notification.getId());
         } catch (Exception e) {
@@ -77,20 +81,23 @@ public class NotificationService {
 
         if (notification.getRetryCount() >= maxRetryAttempts) {
             log.warn("Max retry attempts reached for notification id: {}", id);
-            log.info("\n{}", emailTemplateService.notificationRetryFailed(
-                id, notification.getRetryCount()));
+            EmailDto retryFailedEmail = emailTemplateService.notificationRetryFailed(
+                id, notification.getRetryCount());
+            emailSenderService.sendEmail(retryFailedEmail);
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                 "Max retry attempts reached");
         }
 
         notification.setRetryCount(notification.getRetryCount() + 1);
-        sendNotification(notification);
+
+        EmailDto retryEmail = emailTemplateService.notificationRetrySuccess(id);
+        sendNotification(notification, retryEmail);
 
         if (notification.getStatus() == Notification.NotificationStatus.SENT) {
-            log.info("\n{}", emailTemplateService.notificationRetrySuccess(id));
+            log.info("Notification {} successfully sent after retry", id);
         } else {
-            log.warn("\n{}", emailTemplateService.notificationRetryFailed(
-                id, notification.getRetryCount()));
+            log.warn("Notification {} failed after retry attempt {}",
+                id, notification.getRetryCount());
         }
 
         return notification;

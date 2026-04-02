@@ -1,5 +1,6 @@
 package com.hotel.notificationservice.event;
 
+import com.hotel.notificationservice.dto.EmailDto;
 import com.hotel.notificationservice.entity.Notification;
 import com.hotel.notificationservice.entity.ProcessedEvent;
 import com.hotel.notificationservice.repository.ProcessedEventRepository;
@@ -41,15 +42,15 @@ public class NotificationEventConsumer {
             return;
         }
 
-        String emailContent = emailTemplateService.reservationConfirmed(
+        EmailDto emailDto = emailTemplateService.reservationConfirmed(
             event.getPayload().getReservationId(),
             event.getPayload().getRoomId());
 
         Notification notification = notificationService.createNotification(
-            emailContent,
+            emailDto.getBody(),
             Notification.NotificationType.EMAIL);
 
-        notificationService.sendNotification(notification);
+        notificationService.sendNotification(notification, emailDto);
 
         processedEventRepository.save(
             new ProcessedEvent(event.getEventId(), LocalDateTime.now()));
@@ -72,20 +73,20 @@ public class NotificationEventConsumer {
             return;
         }
 
-        String emailContent;
+        EmailDto emailDto;
         if ("SUCCESS".equals(event.getPayload().getStatus())) {
-            emailContent = emailTemplateService.paymentSuccess(
+            emailDto = emailTemplateService.paymentSuccess(
                 event.getPayload().getReservationId());
         } else {
-            emailContent = emailTemplateService.paymentFailed(
+            emailDto = emailTemplateService.paymentFailed(
                 event.getPayload().getReservationId());
         }
 
         Notification notification = notificationService.createNotification(
-            emailContent,
+            emailDto.getBody(),
             Notification.NotificationType.EMAIL);
 
-        notificationService.sendNotification(notification);
+        notificationService.sendNotification(notification, emailDto);
 
         processedEventRepository.save(
             new ProcessedEvent(event.getEventId(), LocalDateTime.now()));
