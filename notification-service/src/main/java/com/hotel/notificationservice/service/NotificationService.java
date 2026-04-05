@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
@@ -17,31 +18,30 @@ public class NotificationService {
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
     private final NotificationRepository notificationRepository;
-    private final EmailTemplateService emailTemplateService;
     private final EmailSenderService emailSenderService;
 
     @Value("${notification.retry.max-attempts}")
     private int maxRetryAttempts;
 
     public NotificationService(NotificationRepository notificationRepository,
-                                EmailTemplateService emailTemplateService,
                                 EmailSenderService emailSenderService) {
         this.notificationRepository = notificationRepository;
-        this.emailTemplateService = emailTemplateService;
         this.emailSenderService = emailSenderService;
     }
 
-    public Notification createNotification(String message,
+    public Notification createNotification(String message,String subject,String recipientEmail,
                                             Notification.NotificationType type) {
         Notification notification = new Notification();
         notification.setMessage(message);
+        notification.setSubject(subject);
+        notification.setRecipientEmail(recipientEmail);
         notification.setType(type);
         notification.setStatus(Notification.NotificationStatus.PENDING);
         Notification saved = notificationRepository.save(notification);
         log.info("Notification created with id: {}", saved.getId());
         return saved;
     }
-
+    @Async
     public void sendNotification(Notification notification, EmailDto emailDto) {
         try {
             log.info("Sending {} notification id: {}",
@@ -79,18 +79,15 @@ public class NotificationService {
                 "Notification is not in FAILED state");
         }
 
-        if (notification.getRetryCount() >= maxRetryAttempts) {
-            log.warn("Max retry attempts reached for notification id: {}", id);
-            EmailDto retryFailedEmail = emailTemplateService.notificationRetryFailed(
-                id, notification.getRetryCount());
-            emailSenderService.sendEmail(retryFailedEmail);
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Max retry attempts reached");
-        }
+        
 
         notification.setRetryCount(notification.getRetryCount() + 1);
 
-        EmailDto retryEmail = emailTemplateService.notificationRetrySuccess(id);
+     EmailDto retryEmail = new EmailDto(
+    notification.getRecipientEmail(),
+    notification.getSubject(),
+    notification.getMessage()
+);
         sendNotification(notification, retryEmail);
 
         if (notification.getStatus() == Notification.NotificationStatus.SENT) {

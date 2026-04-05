@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.hotel.reservationservice.client.CustomerClient;
 import com.hotel.reservationservice.client.RoomClient;
+import com.hotel.reservationservice.dto.CustomerDto;
 import com.hotel.reservationservice.dto.ReservationRequest;
 import com.hotel.reservationservice.dto.ReservationResponse;
 import com.hotel.reservationservice.dto.RoomDto;
@@ -21,11 +22,16 @@ import com.hotel.reservationservice.event.ReservationEventProducer;
 import com.hotel.reservationservice.repository.ReservationRepository;
 
 import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class ReservationService {
 
     private final ReservationRepository reservationRepository;
+    private static final Logger log = LoggerFactory.getLogger(ReservationService.class);
     private final RoomClient roomClient;
     private final CustomerClient customerClient;
     private final ReservationEventProducer eventProducer;
@@ -36,17 +42,21 @@ public class ReservationService {
         this.customerClient = customerClient;
         this.eventProducer = eventProducer;
     }
+     
+
 
     public ReservationResponse createReservation(ReservationRequest request)
     {
-        try
-        {
-            customerClient.getCustomerById(request.getCustomerId());
-        } 
-        catch (FeignException.NotFound e) {
-            throw new RuntimeException("Customer not found");
 
-        }
+       CustomerDto customerDto;
+try 
+{
+    customerDto = customerClient.getCustomerById(request.getCustomerId());
+} 
+catch (FeignException.NotFound e)
+{
+    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
+}
 
         RoomDto roomDto;
         try{
@@ -73,9 +83,10 @@ public class ReservationService {
             UUID.randomUUID().toString(),
             "RESERVATION_CREATED",
             LocalDateTime.now(),
-            new ReservationCreatedEvent.Payload(saved.getId(), saved.getCustomerId(), saved.getRoomId())
-
+            new ReservationCreatedEvent.Payload(saved.getId(), saved.getCustomerId(), saved.getRoomId(),customerDto.getEmail())
+             
         );
+        log.info("Publishing reservation event with email: {}", customerDto.getEmail());
         eventProducer.publishReservationCreatedEvent(event);
         return toResponse(saved);
     }

@@ -23,13 +23,15 @@ public class ReservationCreatedEvent {
         private Long reservationId;
         private Long customerId;
         private Long roomId;
+        private String customerEmail;
 
         public Payload() {}
 
-        public Payload(Long reservationId, Long customerId, Long roomId) {
+        public Payload(Long reservationId, Long customerId, Long roomId,String customerEmail) {
             this.reservationId = reservationId;
             this.customerId = customerId;
             this.roomId = roomId;
+            this.customerEmail = customerEmail;
         }
 
         public Long getReservationId()
@@ -57,8 +59,13 @@ public class ReservationCreatedEvent {
         { 
             this.roomId = roomId;
         }
+        public String getCustomerEmail() {
+            return customerEmail;
+        }
+        public void setCustomerEmail(String customerEmail) {
+            this.customerEmail = customerEmail;
     }
-
+    }
     public String getEventId()
     {
         return eventId;
@@ -91,4 +98,5 @@ public class ReservationCreatedEvent {
     { 
         this.payload = payload;
     }
+   
 }

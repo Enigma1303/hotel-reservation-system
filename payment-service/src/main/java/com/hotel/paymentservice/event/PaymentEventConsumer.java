@@ -45,6 +45,7 @@ public class PaymentEventConsumer {
     @KafkaListener(topics= "reservation-events", groupId="payment-service-group")
     public void handleRegistrationCreatedEvent(ReservationCreatedEvent event)
     {
+        log.info("Received event in payment. Email: {}", event.getPayload().getCustomerEmail());
 
         if (event == null || event.getPayload() == null || event.getPayload().getReservationId() == null) {
     log.error("Invalid event received, skipping processing. Event: {}", event);
@@ -66,7 +67,7 @@ public class PaymentEventConsumer {
 
         //lets now simulate randomly success or failure
         boolean PaymentSuccess= Math.random()>0.3;
-
+        log.info("Payment simulation result: {}", PaymentSuccess ? "SUCCESS" : "FAILED");
         savedPayment.setStatus(PaymentSuccess?Payment.PaymentStatus.SUCCESS:Payment.PaymentStatus.FAILED);
         paymentRepository.save(savedPayment);
 
@@ -76,7 +77,7 @@ public class PaymentEventConsumer {
            "PAYMENT_COMPLETED",
            LocalDateTime.now(), 
            new PaymentCompletedEvent.Payload(event.getPayload().getReservationId(),
-            savedPayment.getId(), savedPayment.getStatus().name())
+            savedPayment.getId(), savedPayment.getStatus().name(),event.getPayload().getCustomerEmail())
          );
          kafkaTemplate.send(TOPIC,
              paymentCompletedEvent.getPayload().getReservationId().toString(), paymentCompletedEvent);
@@ -89,4 +90,5 @@ public class PaymentEventConsumer {
           log.info("PaymentCompletedEvent published for reservationId: {}", event.getPayload().getReservationId());
     }
 
+  
 }

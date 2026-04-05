@@ -46,8 +46,12 @@ public class NotificationEventConsumer {
             event.getPayload().getReservationId(),
             event.getPayload().getRoomId());
 
+        emailDto.setTo(event.getPayload().getCustomerEmail());
+
         Notification notification = notificationService.createNotification(
             emailDto.getBody(),
+            emailDto.getSubject(),
+            emailDto.getTo(),
             Notification.NotificationType.EMAIL);
 
         notificationService.sendNotification(notification, emailDto);
@@ -77,13 +81,19 @@ public class NotificationEventConsumer {
         if ("SUCCESS".equals(event.getPayload().getStatus())) {
             emailDto = emailTemplateService.paymentSuccess(
                 event.getPayload().getReservationId());
+
+            emailDto.setTo(event.getPayload().getCustomerEmail());
         } else {
             emailDto = emailTemplateService.paymentFailed(
                 event.getPayload().getReservationId());
+            emailDto.setTo(event.getPayload().getCustomerEmail());
         }
+        log.info("Payment email received: {}", event.getPayload().getCustomerEmail());
 
         Notification notification = notificationService.createNotification(
             emailDto.getBody(),
+            emailDto.getSubject(),
+            emailDto.getTo(),
             Notification.NotificationType.EMAIL);
 
         notificationService.sendNotification(notification, emailDto);

@@ -23,13 +23,15 @@ public class PaymentCompletedEvent {
         private Long reservationId;
         private Long paymentId;
         private String status;
+         private String customerEmail;
 
         public Payload() {}
 
-        public Payload(Long reservationId, Long paymentId, String status) {
+        public Payload(Long reservationId, Long paymentId, String status, String customerEmail) {
             this.reservationId = reservationId;
             this.paymentId = paymentId;
             this.status = status;
+            this.customerEmail = customerEmail;
         }
 
         public Long getReservationId() {
@@ -54,6 +56,12 @@ public class PaymentCompletedEvent {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+        public String getCustomerEmail() {
+            return customerEmail;
+        }
+        public void setCustomerEmail(String customerEmail) {
+            this.customerEmail = customerEmail;
         }
 
     }

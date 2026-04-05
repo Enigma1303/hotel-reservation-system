@@ -9,12 +9,27 @@ public class PaymentCompletedEvent {
     private LocalDateTime timestamp;
     private Payload payload;
 
+    public PaymentCompletedEvent(String eventId, String eventType, LocalDateTime timestamp, Payload payload) {
+        this.eventId = eventId;
+        this.eventType = eventType;
+        this.timestamp = timestamp;
+        this.payload = payload;
+    }
+
     public PaymentCompletedEvent() {}
 
     public static class Payload {
         private Long reservationId;
         private Long paymentId;
         private String status;
+        private String customerEmail;
+
+        public Payload(Long reservationId, Long paymentId, String status, String customerEmail) {
+            this.reservationId = reservationId;
+            this.paymentId = paymentId;
+            this.status = status;
+            this.customerEmail = customerEmail;
+        }
 
         public Payload() {}
 
@@ -41,8 +56,13 @@ public class PaymentCompletedEvent {
         public void setStatus(String status) {
             this.status = status;
         }
+        public String getCustomerEmail() {
+            return customerEmail;
+        }
+        public void setCustomerEmail(String customerEmail) {
+            this.customerEmail = customerEmail;
+        }
 
-     
     }
 
     public String getEventId() {
