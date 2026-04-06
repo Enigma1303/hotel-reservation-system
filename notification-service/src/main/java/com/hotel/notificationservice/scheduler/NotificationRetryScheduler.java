@@ -19,7 +19,6 @@ public class NotificationRetryScheduler {
     private static final Logger log = LoggerFactory.getLogger(NotificationRetryScheduler.class);
 
     private final NotificationRepository notificationRepository;
-    private final NotificationService notificationService;
     private final EmailSenderService emailSenderService;
     private final EmailTemplateService emailTemplateService;
 
@@ -31,7 +30,6 @@ public class NotificationRetryScheduler {
                                        EmailSenderService emailSenderService,
                                        EmailTemplateService emailTemplateService) {
         this.notificationRepository = notificationRepository;
-        this.notificationService = notificationService;
         this.emailSenderService = emailSenderService;
         this.emailTemplateService = emailTemplateService;
     }
