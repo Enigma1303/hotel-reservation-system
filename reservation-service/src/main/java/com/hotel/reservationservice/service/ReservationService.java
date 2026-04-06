@@ -2,16 +2,13 @@ package com.hotel.reservationservice.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
-import com.hotel.reservationservice.client.CustomerClient;
-import com.hotel.reservationservice.client.RoomClient;
+import com.hotel.reservationservice.client.ExternalServiceClient;
 import com.hotel.reservationservice.dto.CustomerDto;
 import com.hotel.reservationservice.dto.ReservationRequest;
 import com.hotel.reservationservice.dto.ReservationResponse;
@@ -22,7 +19,6 @@ import com.hotel.reservationservice.event.ReservationEventProducer;
 import com.hotel.reservationservice.repository.ReservationRepository;
 
 import feign.FeignException;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,26 +28,26 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private static final Logger log = LoggerFactory.getLogger(ReservationService.class);
-    private final RoomClient roomClient;
-    private final CustomerClient customerClient;
+    
+    private final ExternalServiceClient externalServiceClient;
     private final ReservationEventProducer eventProducer;
+    
 
-    public ReservationService(ReservationRepository reservationRepository, RoomClient roomClient, CustomerClient customerClient, ReservationEventProducer eventProducer) {
+    public ReservationService(ReservationRepository reservationRepository, ExternalServiceClient externalServiceClient, ReservationEventProducer eventProducer) {
         this.reservationRepository = reservationRepository;
-        this.roomClient = roomClient;
-        this.customerClient = customerClient;
+        this.externalServiceClient = externalServiceClient;
         this.eventProducer = eventProducer;
     }
      
 
-
     public ReservationResponse createReservation(ReservationRequest request)
     {
-
+       log.info("Creating reservation for customerId: {} roomId: {}",
+            request.getCustomerId(), request.getRoomId());
        CustomerDto customerDto;
 try 
 {
-    customerDto = customerClient.getCustomerById(request.getCustomerId());
+    customerDto = externalServiceClient.fetchCustomer(request.getCustomerId());
 } 
 catch (FeignException.NotFound e)
 {
@@ -60,7 +56,7 @@ catch (FeignException.NotFound e)
 
         RoomDto roomDto;
         try{
-            roomDto=roomClient.getRoomById(request.getRoomId());
+            roomDto=externalServiceClient.fetchRoom(request.getRoomId());
         }
         catch (FeignException.NotFound e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Room not found");
@@ -71,13 +67,16 @@ catch (FeignException.NotFound e)
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Room is not available");
         }
       
-        roomClient.updateAvailability(request.getRoomId(), Map.of("availability", false));
+        externalServiceClient.updateRoomAvailability(request.getRoomId(), false);
 
         Reservation reservation = new Reservation();
         reservation.setCustomerId(request.getCustomerId());
         reservation.setRoomId(request.getRoomId());
         reservation.setStatus(Reservation.ReservationStatus.PENDING);
         Reservation saved = reservationRepository.save(reservation);
+        
+
+        log.info("Reservation created with id: {} status: PENDING", saved.getId());
 
         ReservationCreatedEvent event= new ReservationCreatedEvent(
             UUID.randomUUID().toString(),
@@ -86,8 +85,10 @@ catch (FeignException.NotFound e)
             new ReservationCreatedEvent.Payload(saved.getId(), saved.getCustomerId(), saved.getRoomId(),customerDto.getEmail())
              
         );
-        log.info("Publishing reservation event with email: {}", customerDto.getEmail());
+        
         eventProducer.publishReservationCreatedEvent(event);
+
+        log.info("Publishing reservation event with email: {}", customerDto.getEmail());
         return toResponse(saved);
     }
  public ReservationResponse getReservationById(Long id) {
@@ -114,11 +115,11 @@ catch (FeignException.NotFound e)
                 "Reservation is not in a cancellable state");
         }
 
-        // Restore room availability
-        roomClient.updateAvailability(reservation.getRoomId(), Map.of("availability", true));
+        externalServiceClient.updateRoomAvailability(reservation.getRoomId(), true);
 
         reservation.setStatus(Reservation.ReservationStatus.CANCELLED);
         Reservation updated = reservationRepository.save(reservation);
+         log.info("Reservation {} cancelled successfully", id);
         return toResponse(updated);
     }
 

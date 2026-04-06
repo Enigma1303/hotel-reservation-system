@@ -1,0 +1,63 @@
+package com.hotel.reservationservice.client;
+
+import com.hotel.reservationservice.dto.CustomerDto;
+import com.hotel.reservationservice.dto.RoomDto;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.Map;
+
+@Component
+public class ExternalServiceClient {
+
+    private static final Logger log = LoggerFactory.getLogger(ExternalServiceClient.class);
+
+    private final CustomerClient customerClient;
+    private final RoomClient roomClient;
+
+    public ExternalServiceClient(CustomerClient customerClient,
+                                  RoomClient roomClient
+                            ) {
+        this.customerClient = customerClient;
+        this.roomClient = roomClient;
+      
+    }
+
+    @CircuitBreaker(name = "customerServiceCB", fallbackMethod = "customerFallback")
+    public CustomerDto fetchCustomer(Long customerId) {
+        return customerClient.getCustomerById(customerId);
+    }
+
+    public CustomerDto customerFallback(Long customerId, Throwable t) {
+        log.error("Customer service unavailable for customerId: {} error: {}",
+            customerId, t.getMessage());
+        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+            "Customer service temporarily unavailable");
+    }
+
+    @CircuitBreaker(name = "roomServiceCB", fallbackMethod = "roomFallback")
+    public RoomDto fetchRoom(Long roomId) {
+        return roomClient.getRoomById(roomId);
+    }
+
+    public RoomDto roomFallback(Long roomId, Throwable t) {
+        log.error("Room service unavailable for roomId: {} error: {}",
+            roomId, t.getMessage());
+        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+            "Room service temporarily unavailable");
+    }
+
+    @CircuitBreaker(name = "roomServiceCB", fallbackMethod = "updateRoomFallback")
+    public void updateRoomAvailability(Long roomId, boolean availability) {
+        roomClient.updateAvailability(roomId, Map.of("availability", availability));
+    }
+
+    public void updateRoomFallback(Long roomId, boolean availability, Throwable t) {
+        log.error("Room service unavailable when updating roomId: {}", roomId);
+        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+            "Room service temporarily unavailable");
+    }
+}
