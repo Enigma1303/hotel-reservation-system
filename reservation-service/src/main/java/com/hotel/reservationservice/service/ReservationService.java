@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import com.hotel.reservationservice.client.ExternalServiceClient;
 import com.hotel.reservationservice.dto.CustomerDto;
+import com.hotel.reservationservice.dto.PaymentDto;
+import com.hotel.reservationservice.dto.ReservationDetailsResponse;
 import com.hotel.reservationservice.dto.ReservationRequest;
 import com.hotel.reservationservice.dto.ReservationResponse;
 import com.hotel.reservationservice.dto.RoomDto;
@@ -131,4 +133,57 @@ catch (FeignException.NotFound e)
             reservation.getStatus(),
             reservation.getCreatedAt());
     }
+
+
+    public ReservationDetailsResponse getReservationDetails(Long id) {
+    log.info("Fetching details for reservationId: {}", id);
+
+    Reservation reservation = reservationRepository.findById(id)
+            .orElseThrow(() -> {
+                log.error("Reservation not found with id: {}", id);
+                return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Reservation not found");
+            });
+
+    String customerName;
+    try {
+        CustomerDto customerDto = externalServiceClient.fetchCustomer(reservation.getCustomerId());
+        customerName = customerDto.getName();
+    } catch (Exception e) {
+        log.warn("Could not fetch customer for reservationId: {}", id);
+        customerName = "Unavailable";
+    }
+
+    String roomType;
+    try {
+        RoomDto roomDto = externalServiceClient.fetchRoom(reservation.getRoomId());
+        roomType = roomDto.getType();
+    } catch (Exception e) {
+        log.warn("Could not fetch room for reservationId: {}", id);
+        roomType = "Unavailable";
+    }
+
+    String paymentStatus;
+    try {
+        PaymentDto paymentDto = externalServiceClient.fetchPayment(reservation.getId());
+        paymentStatus = paymentDto.getStatus();
+    } catch (Exception e) {
+        log.warn("Could not fetch payment for reservationId: {}", id);
+        paymentStatus = "Payment details temporarily unavailable,try again later";
+    }
+
+    log.info("Details fetched successfully for reservationId: {}", id);
+
+    return new ReservationDetailsResponse(
+        reservation.getId(),
+        reservation.getStatus(),
+        customerName,
+        reservation.getRoomId(),
+        roomType,
+        paymentStatus,
+        reservation.getCreatedAt());
+}
+    
+
+    
 }

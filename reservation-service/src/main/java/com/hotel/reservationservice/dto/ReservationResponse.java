@@ -2,7 +2,6 @@ package com.hotel.reservationservice.dto;
 
 import java.time.LocalDateTime;
 
-import org.springframework.cglib.core.Local;
 
 import com.hotel.reservationservice.entity.Reservation;
 import com.hotel.reservationservice.entity.Reservation.ReservationStatus;

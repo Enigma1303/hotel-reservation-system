@@ -1,6 +1,7 @@
 package com.hotel.reservationservice.client;
 
 import com.hotel.reservationservice.dto.CustomerDto;
+import com.hotel.reservationservice.dto.PaymentDto;
 import com.hotel.reservationservice.dto.RoomDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
@@ -17,12 +18,15 @@ public class ExternalServiceClient {
 
     private final CustomerClient customerClient;
     private final RoomClient roomClient;
+    private final PaymentClient paymentClient;
 
     public ExternalServiceClient(CustomerClient customerClient,
-                                  RoomClient roomClient
+                                  RoomClient roomClient,
+                                  PaymentClient paymentClient
                             ) {
         this.customerClient = customerClient;
         this.roomClient = roomClient;
+        this.paymentClient = paymentClient;
       
     }
 
@@ -60,4 +64,17 @@ public class ExternalServiceClient {
         throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
             "Room service temporarily unavailable");
     }
+
+    @CircuitBreaker(name = "paymentServiceCB", fallbackMethod = "paymentServiceFallback")
+public PaymentDto fetchPayment(Long reservationId) {
+    return paymentClient.getPaymentByReservationId(reservationId);
+}
+
+public PaymentDto paymentServiceFallback(Long reservationId, Throwable t) {
+    log.warn("Payment service unavailable for reservationId: {} error: {}",
+        reservationId, t.getMessage());
+    PaymentDto fallback = new PaymentDto();
+    fallback.setStatus("Payment temporarily unavailable, reservation queued");
+    return fallback;
+}
 }

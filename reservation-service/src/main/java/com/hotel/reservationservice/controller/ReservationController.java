@@ -1,5 +1,6 @@
 package com.hotel.reservationservice.controller;
 
+import com.hotel.reservationservice.dto.ReservationDetailsResponse;
 import com.hotel.reservationservice.dto.ReservationRequest;
 import com.hotel.reservationservice.dto.ReservationResponse;
 import com.hotel.reservationservice.service.ReservationService;
@@ -39,4 +40,9 @@ public class ReservationController {
     public ResponseEntity<ReservationResponse> cancelReservation(@PathVariable Long id) {
         return ResponseEntity.ok(reservationService.cancelReservation(id));
     }
+
+    @GetMapping("/{id}/details")
+public ResponseEntity<ReservationDetailsResponse> getReservationDetails(@PathVariable Long id) {
+    return ResponseEntity.ok(reservationService.getReservationDetails(id));
+}
 }
