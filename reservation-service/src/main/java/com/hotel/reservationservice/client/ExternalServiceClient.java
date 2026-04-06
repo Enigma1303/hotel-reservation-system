@@ -36,11 +36,20 @@ public class ExternalServiceClient {
     }
 
     public CustomerDto customerFallback(Long customerId, Throwable t) {
-        log.error("Customer service unavailable for customerId: {} error: {}",
-            customerId, t.getMessage());
-        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-            "Customer service temporarily unavailable");
+
+    log.error("Customer fallback triggered for customerId: {} error: {}", customerId, t.getMessage());
+
+    if (t instanceof feign.FeignException feignEx && feignEx.status() == 404) {
+        throw new com.hotel.reservationservice.exception.CustomerNotFoundException(customerId);
     }
+
+    if (t.getCause() instanceof feign.FeignException feignEx && feignEx.status() == 404) {
+        throw new com.hotel.reservationservice.exception.CustomerNotFoundException(customerId);
+    }
+
+    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+        "Customer service temporarily unavailable");
+}
 
     @CircuitBreaker(name = "roomServiceCB", fallbackMethod = "roomFallback")
     public RoomDto fetchRoom(Long roomId) {
@@ -48,11 +57,21 @@ public class ExternalServiceClient {
     }
 
     public RoomDto roomFallback(Long roomId, Throwable t) {
-        log.error("Room service unavailable for roomId: {} error: {}",
-            roomId, t.getMessage());
-        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-            "Room service temporarily unavailable");
+
+    log.error("Room fallback triggered for roomId: {} error: {}", roomId, t.getMessage());
+
+
+    if (t instanceof feign.FeignException feignEx && feignEx.status() == 404) {
+        throw new com.hotel.reservationservice.exception.RoomNotFoundException(roomId);
     }
+
+    if (t.getCause() instanceof feign.FeignException feignEx && feignEx.status() == 404) {
+        throw new com.hotel.reservationservice.exception.RoomNotFoundException(roomId);
+    }
+
+    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+        "Room service temporarily unavailable");
+}
 
     @CircuitBreaker(name = "roomServiceCB", fallbackMethod = "updateRoomFallback")
     public void updateRoomAvailability(Long roomId, boolean availability) {
