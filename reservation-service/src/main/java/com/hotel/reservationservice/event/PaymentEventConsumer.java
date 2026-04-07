@@ -32,7 +32,10 @@ public class PaymentEventConsumer {
             System.out.println("Duplicate event detected, discarding: " + event.getEventId());
             return;
         }
-
+        if(event.getPayload() == null || event.getPayload().getReservationId() == null) {
+            System.out.println("Invalid event payload, missing reservationId: " + event.getEventId());
+            return;
+        }
         Reservation reservation = reservationRepository
                 .findById(event.getPayload().getReservationId())
                 .orElse(null);

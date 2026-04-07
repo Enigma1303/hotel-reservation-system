@@ -105,7 +105,10 @@ public class ReservationService {
 
     public ReservationResponse getReservationById(Long id) {
         log.info("Fetching reservation: {}", id);
-
+        if(id == null) {
+            log.error("Reservation id cannot be null");
+            throw new IllegalArgumentException("Reservation id cannot be null");
+        }
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> {
                     log.error("Reservation not found: {}", id);
@@ -127,7 +130,10 @@ public class ReservationService {
     public ReservationResponse cancelReservation(Long id) {
 
         log.info("Cancelling reservation: {}", id);
-
+        if(id == null) {
+            log.error("Reservation id cannot be null");
+            throw new IllegalArgumentException("Reservation id cannot be null");
+        }
         Reservation reservation = reservationRepository.findById(id)
                 .orElseThrow(() -> new ReservationNotFoundException(id));
 
@@ -159,7 +165,10 @@ public class ReservationService {
     public ReservationDetailsResponse getReservationDetails(Long id) {
 
     log.info("Fetching details for reservationId: {}", id);
-
+    if(id == null) {
+        log.error("Reservation id cannot be null");
+        throw new IllegalArgumentException("Reservation id cannot be null");
+    }
     Reservation reservation = reservationRepository.findById(id)
             .orElseThrow(() -> {
                 log.error("Reservation not found: {}", id);

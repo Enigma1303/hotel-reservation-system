@@ -15,80 +15,122 @@ import com.hotel.paymentservice.entity.ProcessedEvent;
 import com.hotel.paymentservice.repository.PaymentRepository;
 import com.hotel.paymentservice.repository.ProcessedEventRepository;
 
-//making sure its managed by spring and can be injected where needed
-//it is a bit different from bean annotation as it automatically creates 
-// in bean we have to tell spring to create an instance of the class and 
-// manage its lifecycle but in component we just have to 
-// annotate the class and spring will automatically create
-//  an instance of it and manage its lifecycle
 @Component
 public class PaymentEventConsumer {
 
-     private static final Logger log = LoggerFactory.getLogger(PaymentEventConsumer.class);
- 
-    PaymentRepository paymentRepository;
-    ProcessedEventRepository processedEventRepository; 
-    private final KafkaTemplate<String,PaymentCompletedEvent> kafkaTemplate;
-    
-    private static final String TOPIC="payment-events";   
-    private int failureCount=0;
+    private static final Logger log = LoggerFactory.getLogger(PaymentEventConsumer.class);
 
-    public PaymentEventConsumer(PaymentRepository paymentRepository, ProcessedEventRepository processedEventRepository, KafkaTemplate<String, PaymentCompletedEvent> kafkaTemplate) {
+    private final PaymentRepository paymentRepository;
+    private final ProcessedEventRepository processedEventRepository;
+    private final KafkaTemplate<String, PaymentCompletedEvent> kafkaTemplate;
+
+    private static final String TOPIC = "payment-events";
+
+    private int failureCount = 0;
+
+    public PaymentEventConsumer(
+            PaymentRepository paymentRepository,
+            ProcessedEventRepository processedEventRepository,
+            KafkaTemplate<String, PaymentCompletedEvent> kafkaTemplate
+    ) {
         this.paymentRepository = paymentRepository;
         this.processedEventRepository = processedEventRepository;
         this.kafkaTemplate = kafkaTemplate;
     }
 
+  
     public void setFailureCounter(int failureCount) {
         this.failureCount = failureCount;
+        log.warn("🔥 Failure counter set to: {}", this.failureCount);
     }
-    @KafkaListener(topics= "reservation-events", groupId="payment-service-group")
-    public void handleRegistrationCreatedEvent(ReservationCreatedEvent event)
-    {
+
+    @KafkaListener(topics = "reservation-events", groupId = "payment-service-group")
+    public void handleRegistrationCreatedEvent(ReservationCreatedEvent event) {
+
         log.info("Received event in payment. Email: {}", event.getPayload().getCustomerEmail());
+        log.info("Current failureCount value: {}", failureCount);
 
         if (event == null || event.getPayload() == null || event.getPayload().getReservationId() == null) {
-    log.error("Invalid event received, skipping processing. Event: {}", event);
-    return;
-}
-        //lets first check if this event is already presnet in the table 
-        //for idempotency checks
-        if(processedEventRepository.existsByEventId(event.getEventId()))
-        {
-          log.warn("Duplicate event detected, discarding: {}", event.getEventId());
-          return;
+            log.error("Invalid event received, skipping processing. Event: {}", event);
+            return;
         }
 
-        Payment payment=new Payment();
-        payment.setReservationId(event.getPayload().getReservationId());
+        if (processedEventRepository.existsByEventId(event.getEventId())) {
+            log.warn("Duplicate event detected, discarding: {}", event.getEventId());
+            return;
+        }
+
+        Long reservationId = event.getPayload().getReservationId();
+
+        if (failureCount > 0) {
+            failureCount--;
+
+            log.error("Simulated payment failure for reservationId: {}. Remaining failures: {}",
+                    reservationId, failureCount);
+
+            Payment failedPayment = new Payment();
+            failedPayment.setReservationId(reservationId);
+            failedPayment.setStatus(Payment.PaymentStatus.FAILED);
+
+            Payment savedPayment = paymentRepository.save(failedPayment);
+
+        
+            publishPaymentEvent(event, savedPayment);
+
+            processedEventRepository.save(
+                    new ProcessedEvent(event.getEventId(), LocalDateTime.now())
+            );
+
+            return; 
+        }
+        Payment payment = new Payment();
+        payment.setReservationId(reservationId);
         payment.setStatus(Payment.PaymentStatus.PENDING);
-        Payment savedPayment= paymentRepository.save(payment);
+
+        Payment savedPayment = paymentRepository.save(payment);
+
         log.info("Payment created successfully: {}", savedPayment.getId());
 
-        //lets now simulate randomly success or failure
-        boolean PaymentSuccess= Math.random()>0.3;
-        log.info("Payment simulation result: {}", PaymentSuccess ? "SUCCESS" : "FAILED");
-        savedPayment.setStatus(PaymentSuccess?Payment.PaymentStatus.SUCCESS:Payment.PaymentStatus.FAILED);
+        // Random success/failure simulation
+        boolean paymentSuccess = Math.random() > 0.3;
+
+        log.info("Payment simulation result: {}", paymentSuccess ? "SUCCESS" : "FAILED");
+
+        savedPayment.setStatus(
+                paymentSuccess
+                        ? Payment.PaymentStatus.SUCCESS
+                        : Payment.PaymentStatus.FAILED
+        );
+
         paymentRepository.save(savedPayment);
 
-         //ab publish karoww
-         PaymentCompletedEvent paymentCompletedEvent= new PaymentCompletedEvent(
-           UUID.randomUUID().toString(),
-           "PAYMENT_COMPLETED",
-           LocalDateTime.now(), 
-           new PaymentCompletedEvent.Payload(event.getPayload().getReservationId(),
-            savedPayment.getId(), savedPayment.getStatus().name(),event.getPayload().getCustomerEmail())
-         );
-         kafkaTemplate.send(TOPIC,
-             paymentCompletedEvent.getPayload().getReservationId().toString(), paymentCompletedEvent);
-        
+        publishPaymentEvent(event, savedPayment);
 
-         processedEventRepository.save(
-            new ProcessedEvent(event.getEventId(),LocalDateTime.now())
-         );
+        processedEventRepository.save(
+                new ProcessedEvent(event.getEventId(), LocalDateTime.now())
+        );
 
-          log.info("PaymentCompletedEvent published for reservationId: {}", event.getPayload().getReservationId());
+        log.info("PaymentCompletedEvent published for reservationId: {}", reservationId);
     }
 
-  
+    private void publishPaymentEvent(ReservationCreatedEvent event, Payment payment) {
+
+        PaymentCompletedEvent paymentCompletedEvent = new PaymentCompletedEvent(
+                UUID.randomUUID().toString(),
+                "PAYMENT_COMPLETED",
+                LocalDateTime.now(),
+                new PaymentCompletedEvent.Payload(
+                        event.getPayload().getReservationId(),
+                        payment.getId(),
+                        payment.getStatus().name(),
+                        event.getPayload().getCustomerEmail()
+                )
+        );
+
+        kafkaTemplate.send(
+                TOPIC,
+                paymentCompletedEvent.getPayload().getReservationId().toString(),
+                paymentCompletedEvent
+        );
+    }
 }
