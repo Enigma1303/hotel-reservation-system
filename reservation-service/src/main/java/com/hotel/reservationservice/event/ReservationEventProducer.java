@@ -16,6 +16,9 @@ public class ReservationEventProducer {
     public void publishReservationCreatedEvent(ReservationCreatedEvent event)
     {
         //the format has topic,key,value here in this case 
+        if(event == null || event.getPayload() == null || event.getPayload().getReservationId() == null) {
+            return;
+        }
         kafkaTemplate.send(TOPIC,event.getPayload().getReservationId().toString(),event);
     }
 }

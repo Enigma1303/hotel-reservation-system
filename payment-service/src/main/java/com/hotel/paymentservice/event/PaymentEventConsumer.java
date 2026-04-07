@@ -41,7 +41,7 @@ public class PaymentEventConsumer {
   
     public void setFailureCounter(int failureCount) {
         this.failureCount = failureCount;
-        log.warn("🔥 Failure counter set to: {}", this.failureCount);
+        log.warn(" Failure counter set to: {}", this.failureCount);
     }
 
     @KafkaListener(topics = "reservation-events", groupId = "payment-service-group")
