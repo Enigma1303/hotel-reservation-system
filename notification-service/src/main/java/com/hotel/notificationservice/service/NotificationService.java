@@ -79,6 +79,10 @@ public class NotificationService {
     public Notification retryNotification(Long id) {
 
         log.info("Retrying notification id: {}", id);
+        if(id == null) {
+            log.error("Notification id cannot be null");
+            throw new IllegalArgumentException("Notification id cannot be null");
+        }
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new NotificationNotFoundException(id));
 

@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.hotel.reservationservice.client.ExternalServiceClient;
 import com.hotel.reservationservice.dto.*;
@@ -36,7 +37,7 @@ public class ReservationService {
         this.externalServiceClient = externalServiceClient;
         this.eventProducer = eventProducer;
     }
-
+    @Transactional
     public ReservationResponse createReservation(ReservationRequest request) {
 
         log.info("Creating reservation for customerId: {} roomId: {}",
