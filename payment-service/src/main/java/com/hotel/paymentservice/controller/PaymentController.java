@@ -44,7 +44,7 @@ public ResponseEntity<Map<String, String>> simulateFailure() {
 
     // yaha pe rest endpoint failure simulation
     paymentService.activateFailureSimulation();
-    log.warn("Payment service failure simulation activated");
+    log.warn("Payment service failure simulation activated Rest and Kafka consumer will fail for next 10 requests/events");
     return ResponseEntity.ok(Map.of("message",
         "Payment-Service will fail for next 10 requests"));
 }
@@ -52,6 +52,7 @@ public ResponseEntity<Map<String, String>> simulateFailure() {
 @PostMapping("/restore")
 public ResponseEntity<Map<String, String>> restore() {
     paymentService.deactivateFailureSimulation();
+    paymentEventConsumer.setFailureCounter(0);
     log.info("Payment service restored to normal operation");
     return ResponseEntity.ok(Map.of("message",
         "Payment-Service restored to normal operation"));
