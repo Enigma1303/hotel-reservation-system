@@ -35,6 +35,8 @@ public class KafkaConfig {
     public ConsumerFactory<String, ReservationCreatedEvent> reservationConsumerFactory() {
         JsonDeserializer<ReservationCreatedEvent> deserializer =
             new JsonDeserializer<>(ReservationCreatedEvent.class);
+
+            
         deserializer.setUseTypeHeaders(false);
         return new DefaultKafkaConsumerFactory<>(
             baseConsumerConfig(),
