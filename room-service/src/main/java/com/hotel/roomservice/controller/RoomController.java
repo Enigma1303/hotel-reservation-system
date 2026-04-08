@@ -6,19 +6,30 @@ import com.hotel.roomservice.service.RoomService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 
 @RestController
 @RequestMapping("/api/rooms")
 public class RoomController {
+     
 
+    private static final Logger log = LoggerFactory.getLogger(RoomController.class);
     private final RoomService roomService;
-
-    public RoomController(RoomService roomService) {
+    private final Environment environment;
+    
+    public RoomController(RoomService roomService, Environment environment) {
         this.roomService = roomService;
+        this.environment = environment;
+
     }
 
     @GetMapping
     public ResponseEntity<List<RoomResponse>> getAllRooms() {
+
+        log.info("Request handled by instance on port: {}",
+        environment.getProperty("local.server.port"));
         return ResponseEntity.ok(roomService.getAllRooms());
     }
 
