@@ -53,29 +53,10 @@ public class ReservationService {
             log.error("Customer service error", e);
             throw e;
         }
+       externalServiceClient.bookRoom(request.getRoomId());
 
-        RoomDto roomDto;
-        try {
-            roomDto = externalServiceClient.fetchRoom(request.getRoomId());
-        } catch (FeignException e) {
-            if (e.status() == 404) {
-                log.error("Room not found: {}", request.getRoomId());
-                throw new RoomNotFoundException(request.getRoomId());
-            }
-            log.error("Room service error", e);
-            throw e;
-        }
 
-     
-        if (roomDto == null || !roomDto.getAvailability()) {
-            log.error("Room not available: {}", request.getRoomId());
-            throw new RoomUnavailableException();
-        }
-
-       
-        externalServiceClient.updateRoomAvailability(request.getRoomId(), false);
-
-      
+       try{
         Reservation reservation = new Reservation();
         reservation.setCustomerId(request.getCustomerId());
         reservation.setRoomId(request.getRoomId());
@@ -102,6 +83,18 @@ public class ReservationService {
         log.info("Reservation event published for id: {}", saved.getId());
 
         return toResponse(saved);
+    }
+    catch(Exception e) {
+         log.error("Error during reservation creation, rolling back room availability");
+
+    try {
+        externalServiceClient.updateRoomAvailability(request.getRoomId(), true);
+    } catch (Exception rollbackEx) {
+        log.error("Failed to rollback room availability", rollbackEx);
+    }
+
+    throw e;
+    }
     }
 
     public ReservationResponse getReservationById(Long id) {
@@ -142,7 +135,8 @@ public class ReservationService {
             log.error("Reservation {} not cancellable", id);
             throw new ReservationConflictException();
         }
-
+       
+        //fix for handling if kafka fails after room availability is updated but before reservation status is updated to cancelled
         externalServiceClient.updateRoomAvailability(reservation.getRoomId(), true);
 
         reservation.setStatus(Reservation.ReservationStatus.CANCELLED);

@@ -9,6 +9,7 @@ import com.hotel.roomservice.repository.RoomRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -83,4 +84,13 @@ public class RoomService {
                 updated.getAvailability(),
                 updated.getPrice());
     }
+
+    @Transactional
+    public boolean bookRoom(Long id) {
+    
+        log.info("Booking room with id: {}", id);
+        int updated=roomRepository.bookRoom(id);
+        return updated==1;
+    }
+            
 }

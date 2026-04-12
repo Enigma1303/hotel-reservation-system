@@ -3,6 +3,10 @@ package com.hotel.reservationservice.client;
 import com.hotel.reservationservice.dto.CustomerDto;
 import com.hotel.reservationservice.dto.PaymentDto;
 import com.hotel.reservationservice.dto.RoomDto;
+import com.hotel.reservationservice.exception.RoomNotFoundException;
+import com.hotel.reservationservice.exception.RoomUnavailableException;
+
+import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +87,30 @@ public class ExternalServiceClient {
         throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
             "Room service temporarily unavailable");
     }
+
+    @CircuitBreaker(name = "roomServiceCB", fallbackMethod = "bookRoomFallback")
+public void bookRoom(Long roomId) {
+    try {
+        roomClient.bookRoom(roomId);
+    } catch (FeignException e) {
+        if (e.status() == 404) {
+            throw new RoomNotFoundException(roomId);
+        }
+        if (e.status() == 409) {
+            throw new RoomUnavailableException();
+        }
+        throw e; 
+    }
+}
+
+   public void bookRoomFallback(Long roomId, Throwable t) {
+    if (t instanceof RoomUnavailableException || t instanceof RoomNotFoundException) {
+        throw (RuntimeException) t;
+    }
+
+    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+        "Room service temporarily unavailable");
+}
 
     @CircuitBreaker(name = "paymentServiceCB", fallbackMethod = "paymentServiceFallback")
 public PaymentDto fetchPayment(Long reservationId) {

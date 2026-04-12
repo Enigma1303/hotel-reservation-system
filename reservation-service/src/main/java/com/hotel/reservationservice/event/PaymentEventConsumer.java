@@ -1,5 +1,6 @@
 package com.hotel.reservationservice.event;
 
+import com.hotel.reservationservice.client.ExternalServiceClient;
 import com.hotel.reservationservice.client.RoomClient;
 import com.hotel.reservationservice.entity.ProcessedEvent;
 import com.hotel.reservationservice.entity.Reservation;
@@ -20,14 +21,14 @@ public class PaymentEventConsumer {
 
     private final ReservationRepository reservationRepository;
     private final ProcessedEventRepository processedEventRepository;
-    private final RoomClient roomClient;
+    private final ExternalServiceClient externalServiceClient;
 
     public PaymentEventConsumer(ReservationRepository reservationRepository,
                                ProcessedEventRepository processedEventRepository,
-                               RoomClient roomClient) {
+                              ExternalServiceClient externalServiceClient) {
         this.reservationRepository = reservationRepository;
         this.processedEventRepository = processedEventRepository;
-        this.roomClient = roomClient;
+        this.externalServiceClient = externalServiceClient;
     }
 
     @KafkaListener(topics = "payment-events", groupId = "reservation-service-group")
@@ -61,13 +62,14 @@ public class PaymentEventConsumer {
         if ("SUCCESS".equals(event.getPayload().getStatus())) {
             reservation.setStatus(Reservation.ReservationStatus.CONFIRMED);
             log.info("Payment successful for reservationId: {}", reservation.getId());
-        } else {
+        } else
+            {
             reservation.setStatus(Reservation.ReservationStatus.FAILED);
             log.warn("Payment failed for reservationId: {}, restoring room availability", reservation.getId());
-            roomClient.updateAvailability(
-                    reservation.getRoomId(),
-                    Map.of("availability", true)
-            );
+            externalServiceClient.updateRoomAvailability(
+    reservation.getRoomId(),
+    true
+);
         }
 
         reservationRepository.save(reservation);

@@ -22,6 +22,37 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex,
+            HttpServletRequest request) {
+
+        return ResponseEntity
+                .status(400)
+                .body(new ErrorResponse(
+                        ex.getMessage(),
+                        "BAD_REQUEST",
+                        400,
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatusException(
+            org.springframework.web.server.ResponseStatusException ex,
+            HttpServletRequest request) {
+
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(new ErrorResponse(
+                        ex.getReason(),
+                        "ERROR",
+                        ex.getStatusCode().value(),
+                        request.getRequestURI()
+                ));
+    }
+
+  
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex,

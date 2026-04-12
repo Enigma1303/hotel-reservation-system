@@ -91,7 +91,6 @@ public class PaymentEventConsumer {
 
         log.info("Payment created successfully: {}", savedPayment.getId());
 
-        // Random success/failure simulation
         boolean paymentSuccess = Math.random() > 0.3;
 
         log.info("Payment simulation result: {}", paymentSuccess ? "SUCCESS" : "FAILED");

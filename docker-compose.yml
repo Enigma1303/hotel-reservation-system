@@ -191,6 +191,22 @@ services:
       mysql-room:
         condition: service_healthy
 
+  room-service-2:
+    build: ./room-service
+    container_name: room-service-2
+    ports:
+      - "8086:8082"
+    environment:
+      - SPRING_APPLICATION_NAME=room-service
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-room:3306/room_db
+      - MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans
+    depends_on:
+      config-server:
+        condition: service_healthy
+      mysql-room:
+        condition: service_healthy
   reservation-service:
     build: ./reservation-service
     container_name: reservation-service

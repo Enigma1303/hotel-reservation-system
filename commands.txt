@@ -1,0 +1,62 @@
+
+Starting and Stopping
+Start everything:
+docker-compose up -d
+
+
+Start everything and rebuild images:
+docker-compose up --build -d
+Start specific service only:
+
+docker-compose up -d reservation-service
+Stop everything:
+
+docker-compose down
+Stop everything and remove volumes (wipes all data):
+docker-compose down -v
+
+Stop/Start a specific service:
+docker-compose stop payment-service
+
+All Logs together:
+docker-compose logs -f
+
+One by One logs :
+docker-compose logs -f reservation-service
+
+
+http://localhost:8083/actuator/health
+
+docker-compose stop room-service-2
+docker-compose start room-service-2
+
+
+Kafka Demo:
+List all Kafka topics:
+docker exec -it kafka /opt/kafka/bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 --list
+
+Watch topic live:
+docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic reservation-events \
+  --from-beginning
+
+docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic payment-events \
+  --from-beginning  
+
+Check which ports are in use:
+docker-compose ps --format "table {{.Name}}\t{{.Ports}}"
+
+
+INSERT INTO notifications
+(recipient_email, subject, message, type, status, retry_count, created_at)
+VALUES
+('kumar.aryan.1303@gmail.com', 'Payment Failed – Reservation #99', 'Hi Customer, We were unable to process your payment for reservation #99. Payment Status : FAILED. Please try again. — Hotel Reservation System', 'EMAIL', 'FAILED', 3, NOW());
+
+INSERT INTO notifications
+(recipient_email, subject, message, type, status, retry_count, created_at)
+VALUES
+('kumar.aryan.1303@gmail.com', 'Payment Failed – Reservation #98', 'Hi Customer, We were unable to process your payment for reservation #98. Payment Status : FAILED. Please try again. — Hotel Reservation System', 'EMAIL', 'FAILED', 2, NOW());
